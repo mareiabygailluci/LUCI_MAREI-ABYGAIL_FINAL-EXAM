@@ -15,7 +15,7 @@ claim verification workflow.
 
 1. Clone the repo into XAMPP's web folder:
    ```bash
-   git clone https://github.com/mareiabygailluci/Lost2Found.git "C:\xampp\htdocs\Lost2Found"
+   git clone https://github.com/mareiabygailluci/LUCI_MAREI-ABYGAIL_FINAL-EXAM.git "C:\xampp\htdocs\Lost2Found"
    ```
    (If your XAMPP is at `D:\xamp`, clone to `D:\xamp\htdocs\Lost2Found` instead.)
 2. Start **Apache** and **MySQL** in the XAMPP Control Panel.
