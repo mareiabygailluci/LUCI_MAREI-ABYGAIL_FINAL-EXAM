@@ -184,13 +184,14 @@ require __DIR__ . '/../includes/header.php';
             </td>
             <td class="td-actions">
               <div class="actions">
-                <a class="btn btn-outline btn-sm" href="<?= base_url('admin/item_view.php?type=found&id=' . (int)$c['found_item_id']) ?>">
+                <a class="btn btn-outline btn-sm" href="<?= base_url('admin/item_view.php?type=found&id=' . (int)$c['found_item_id'] . '&back=claims') ?>">
                   <?= icon('eye', 'i i-sm') ?> Item
                 </a>
                 <?php if ($c['status'] === 'pending'): ?>
                   <a class="btn btn-teal btn-sm"
                      href="<?= base_url('admin/claims.php?action=approve&id=' . (int)$c['id'] . '&csrf=' . csrf_token()) ?>"
-                     data-confirm="Approve this claim? The claimant will be told to coordinate with the barangay office.">
+                     data-confirm="Approve this claim? The claimant will be told to coordinate with the barangay office."
+                     data-confirm-tone="success">
                     <?= icon('check', 'i i-sm') ?> Approve
                   </a>
                   <a class="btn btn-ghost btn-sm" style="color:var(--danger)"
@@ -199,11 +200,16 @@ require __DIR__ . '/../includes/header.php';
                     <?= icon('x', 'i i-sm') ?> Reject
                   </a>
                 <?php elseif ($c['status'] === 'approved'): ?>
-                  <a class="btn btn-sm" style="background:var(--success);color:#fff"
-                     href="<?= base_url('admin/claims.php?action=returned&id=' . (int)$c['id'] . '&csrf=' . csrf_token()) ?>"
-                     data-confirm="Confirm that the item has been handed to the claimant? This closes the case.">
-                    <?= icon('gift', 'i i-sm') ?> Mark Returned
-                  </a>
+                  <?php if ($c['item_status'] === 'returned'): ?>
+                    <span class="badge badge-success"><?= icon('check', 'i i-sm') ?> Item Returned</span>
+                  <?php else: ?>
+                    <a class="btn btn-sm" style="background:var(--success);color:#fff"
+                       href="<?= base_url('admin/claims.php?action=returned&id=' . (int)$c['id'] . '&csrf=' . csrf_token()) ?>"
+                       data-confirm="Confirm that the item has been handed to the claimant? This closes the case."
+                       data-confirm-tone="success">
+                      <?= icon('gift', 'i i-sm') ?> Mark Returned
+                    </a>
+                  <?php endif; ?>
                 <?php endif; ?>
               </div>
             </td>

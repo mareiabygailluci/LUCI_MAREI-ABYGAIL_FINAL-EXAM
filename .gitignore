@@ -1,0 +1,3 @@
+# Uploaded photos (user data — do not commit)
+uploads/*
+!uploads/.gitkeep

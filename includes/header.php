@@ -63,13 +63,12 @@ $navSections = $isAdmin ? [
         ['claims',  'resident/claims.php',      'shield', 'My Claims',        0],
     ]],
     ['Account', [
-        ['notifications', 'resident/notifications.php', 'bell', 'Notifications', unread_notifications()],
-        ['profile',       'resident/profile.php',       'user', 'My Profile',    0],
+        ['profile', 'resident/profile.php', 'user', 'My Profile', 0],
     ]],
 ];
 
-/* ---- topbar notifications (latest 5) ---- */
-$nstmt = $db->prepare('SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 5');
+/* ---- topbar notifications (latest 3, "see all" opens the full list) ---- */
+$nstmt = $db->prepare('SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 3');
 $nstmt->execute([$uid]);
 $notifs = $nstmt->fetchAll();
 $unread = unread_notifications();
@@ -89,7 +88,7 @@ function notif_icon(string $type): array {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= e($title ?? 'Lost2Found') ?> · Lost2Found</title>
-<link rel="stylesheet" href="<?= base_url('assets/css/style.css') ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/style.css') ?>?v=<?= (int)filemtime(__DIR__ . '/../assets/css/style.css') ?>">
 </head>
 <body>
 <div class="app">
@@ -125,30 +124,30 @@ function notif_icon(string $type): array {
       <span class="spacer"></span>
 
       <details class="menu">
-        <summary class="icon-btn" aria-label="Notifications">
+        <summary class="icon-btn<?= $unread > 0 ? ' has-unread' : '' ?>" aria-label="Notifications">
           <?= icon('bell') ?>
           <?php if ($unread > 0): ?><span class="dot"><?= $unread > 9 ? '9+' : $unread ?></span><?php endif; ?>
         </summary>
         <div class="menu-body" style="min-width:330px">
           <div class="menu-head flex-between">
             <strong>Notifications</strong>
-            <?php if ($unread > 0): ?>
-              <a class="small" href="<?= base_url('resident/notifications.php?mark_all=1&csrf=' . csrf_token()) ?>">Mark all read</a>
-            <?php endif; ?>
+            <a class="small" href="<?= base_url('resident/notifications.php?mark_all=1&csrf=' . csrf_token()) ?>">Mark all read</a>
           </div>
           <?php if (!$notifs): ?>
             <p class="faint" style="padding:10px 11px">No notifications yet.</p>
-          <?php else: foreach ($notifs as $n): [$ni, $nc] = notif_icon($n['type']); ?>
-            <a href="<?= base_url('resident/notifications.php?read=' . (int)$n['id'] . '&goto=' . rawurlencode((string)($n['link'] ?? ''))) ?>">
+          <?php else: foreach ($notifs as $n): [$ni, $nc] = notif_icon($n['type']); $isUnread = (int)$n['is_read'] === 0; ?>
+            <a class="notif-row<?= $isUnread ? ' is-unread' : '' ?>"
+               href="<?= base_url('resident/notifications.php?read=' . (int)$n['id'] . '&goto=' . rawurlencode((string)($n['link'] ?? ''))) ?>">
               <span class="notif-ico <?= $nc ?>" style="width:28px;height:28px;border-radius:8px"><?= icon($ni, 'i i-sm') ?></span>
-              <span style="min-width:0">
+              <span style="min-width:0;flex:1">
                 <span class="small" style="display:block;white-space:normal"><?= e($n['message']) ?></span>
                 <span class="faint"><?= time_ago($n['created_at']) ?></span>
               </span>
+              <?php if ($isUnread): ?><span class="new-pill">New</span><?php endif; ?>
             </a>
           <?php endforeach; endif; ?>
           <a href="<?= base_url('resident/notifications.php') ?>"
-             style="justify-content:center;font-weight:700;color:var(--primary)">View all notifications</a>
+             style="justify-content:center;font-weight:700;color:var(--primary)">See all notifications</a>
         </div>
       </details>
 
@@ -162,7 +161,6 @@ function notif_icon(string $type): array {
             <strong><?= e($u['full_name']) ?></strong>
             <span><?= e($u['email']) ?></span>
           </div>
-          <a href="<?= base_url('resident/profile.php') ?>"><?= icon('user', 'i i-sm') ?> My Profile</a>
           <a href="<?= base_url('auth/logout.php') ?>"><?= icon('logout', 'i i-sm') ?> Sign out</a>
         </div>
       </details>

@@ -25,6 +25,24 @@ if ($newId > 0) {
     $claimItem = $st->fetch();
 }
 
+/* --- Load a pending claim for editing --- */
+$editId   = (int)($_GET['edit'] ?? 0);
+$editClaim = null;
+if ($editId > 0) {
+    $st = $db->prepare(
+        'SELECT cr.*, f.item_name, f.photo AS item_photo, f.status AS item_status,
+                c.category_name, loc.location_name, u.full_name AS finder_name, f.date_found
+         FROM claim_requests cr
+         JOIN found_items f ON f.id = cr.found_item_id
+         JOIN categories c ON c.id = f.category_id
+         JOIN locations loc ON loc.id = f.location_id
+         JOIN users u ON u.id = f.user_id
+         WHERE cr.id = ? AND cr.claimant_id = ?'
+    );
+    $st->execute([$editId, $uid]);
+    $editClaim = $st->fetch();
+}
+
 /* --- Handle submission --- */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && post('action') === 'submit_claim') {
     verify_csrf();
@@ -72,16 +90,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && post('action') === 'submit_claim') 
     redirect('resident/claims.php');
 }
 
-/* --- Cancel own pending claim --- */
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && post('action') === 'cancel') {
+/* --- Delete own claim --- */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(post('action'), ['cancel', 'delete'], true)) {
     verify_csrf();
     $id = (int)post('id');
-    $st = $db->prepare("SELECT id FROM claim_requests WHERE id = ? AND claimant_id = ? AND status = 'pending'");
+    $st = $db->prepare('SELECT id FROM claim_requests WHERE id = ? AND claimant_id = ?');
     $st->execute([$id, $uid]);
     if ($st->fetch()) {
         $db->prepare('DELETE FROM claim_requests WHERE id = ?')->execute([$id]);
-        flash('success', 'Claim request cancelled.');
+        flash('success', 'Claim request deleted.');
     }
+    redirect('resident/claims.php');
+}
+
+/* --- Update own claim --- */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && post('action') === 'update_claim') {
+    verify_csrf();
+    $id     = (int)post('id');
+    $reason = post('reason');
+
+    $st = $db->prepare('SELECT id, found_item_id FROM claim_requests WHERE id = ? AND claimant_id = ?');
+    $st->execute([$id, $uid]);
+    $claim = $st->fetch();
+
+    if (!$claim) {
+        flash('danger', 'This claim cannot be edited.');
+        redirect('resident/claims.php');
+    }
+    if ($reason === '') {
+        flash('danger', 'Please explain why the item belongs to you.');
+        redirect('resident/claims.php?edit=' . $id);
+    }
+
+    $proof = null;
+    try {
+        $proof = handle_image_upload('proof', 'proof');
+    } catch (RuntimeException $ex) {
+        flash('danger', $ex->getMessage());
+        redirect('resident/claims.php?edit=' . $id);
+    }
+
+    if ($proof !== null) {
+        $db->prepare('UPDATE claim_requests SET reason = ?, proof = ? WHERE id = ?')
+           ->execute([$reason, $proof, $id]);
+    } else {
+        $db->prepare('UPDATE claim_requests SET reason = ? WHERE id = ?')
+           ->execute([$reason, $id]);
+    }
+
+    flash('success', 'Claim request updated.');
     redirect('resident/claims.php');
 }
 
@@ -106,7 +163,9 @@ require __DIR__ . '/../includes/header.php';
     <h1>My Claim Requests</h1>
     <p>File a claim when you see your item, then track the barangay's review here.</p>
   </div>
-  <a class="btn btn-outline" href="<?= base_url('resident/browse.php?type=found') ?>"><?= icon('search', 'i i-sm') ?> Browse found items</a>
+  <?php if (!$editClaim): ?>
+    <a class="btn btn-outline" href="<?= base_url('resident/browse.php?type=found') ?>"><?= icon('search', 'i i-sm') ?> Browse found items</a>
+  <?php endif; ?>
 </div>
 
 <?php if ($claimItem): ?>
@@ -159,7 +218,62 @@ require __DIR__ . '/../includes/header.php';
   </div>
 <?php endif; ?>
 
-<?php if (!$claims): ?>
+<?php if ($editClaim): ?>
+  <div class="card mb-3" style="max-width:860px">
+    <div class="card-head">
+      <h3><?= icon('edit', 'i i-sm') ?> Edit claim request</h3>
+      <a class="btn btn-ghost btn-sm" href="<?= base_url('resident/claims.php') ?>">Close</a>
+    </div>
+    <div class="card-body">
+      <div class="flex mb-3" style="align-items:flex-start">
+        <?php if ($editClaim['item_photo']): ?>
+          <img class="thumb-sm" style="width:64px;height:64px" src="<?= e(photo_url($editClaim['item_photo'])) ?>" alt="">
+        <?php else: ?>
+          <span class="thumb-sm placeholder" style="width:64px;height:64px"><?= icon('image', 'i') ?></span>
+        <?php endif; ?>
+        <div>
+          <strong><?= e($editClaim['item_name']) ?></strong>
+          <div class="small muted">
+            <?= e($editClaim['category_name']) ?> · <?= e($editClaim['location_name']) ?> ·
+            Found on <?= fmt_date($editClaim['date_found']) ?> ·
+            Reported by <?= e($editClaim['finder_name']) ?>
+          </div>
+        </div>
+      </div>
+
+      <?php if (!empty($editClaim['proof'])): ?>
+        <div class="mb-3">
+          <div class="small muted mb-1">Current proof photo:</div>
+          <img class="thumb-sm" style="width:80px;height:80px;object-fit:cover" src="<?= e(photo_url($editClaim['proof'])) ?>" alt="Proof">
+        </div>
+      <?php endif; ?>
+
+      <form method="post" enctype="multipart/form-data" novalidate>
+        <?= csrf_field() ?>
+        <input type="hidden" name="action" value="update_claim">
+        <input type="hidden" name="id" value="<?= (int)$editClaim['id'] ?>">
+
+        <div class="field">
+          <label for="edit_reason">Why does this item belong to you? <span class="req">*</span></label>
+          <textarea class="input" id="edit_reason" name="reason" required
+                    placeholder="Describe specific details only the owner would know — marks, contents, engravings, when and where you lost it…"><?= e($editClaim['reason']) ?></textarea>
+        </div>
+        <div class="field mt-2">
+          <label for="edit_proof">Replace proof photo <span class="muted small">(optional — leave empty to keep current)</span></label>
+          <input class="input" type="file" id="edit_proof" name="proof" accept="image/jpeg,image/png,image/webp" data-preview="editProofPreview">
+          <div class="photo-preview" id="editProofPreview"><img src="" alt="Preview" style="display:none"></div>
+        </div>
+
+        <div class="flex mt-3">
+          <button class="btn btn-teal" type="submit"><?= icon('check', 'i i-sm') ?> Save changes</button>
+          <a class="btn btn-ghost" href="<?= base_url('resident/claims.php') ?>">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+<?php endif; ?>
+
+<?php if (!$editClaim && !$claims): ?>
   <div class="card">
     <div class="empty">
       <?= icon('shield', 'i') ?>
@@ -169,7 +283,7 @@ require __DIR__ . '/../includes/header.php';
       <a class="btn btn-teal mt-3" href="<?= base_url('resident/browse.php?type=found') ?>">Browse found items</a>
     </div>
   </div>
-<?php else: ?>
+<?php elseif (!$editClaim): ?>
   <div class="card">
     <div class="table-wrap">
       <table>
@@ -199,19 +313,26 @@ require __DIR__ . '/../includes/header.php';
             <td><?= status_badge($c['status']) ?></td>
             <td class="muted small"><?= $c['reviewed_at'] ? fmt_date($c['reviewed_at']) : '—' ?></td>
             <td class="td-actions">
-              <?php if ($c['status'] === 'pending'): ?>
-                <form method="post">
-                  <?= csrf_field() ?>
-                  <input type="hidden" name="action" value="cancel">
-                  <input type="hidden" name="id" value="<?= (int)$c['id'] ?>">
-                  <button class="btn btn-ghost btn-sm" style="color:var(--danger)"
-                          data-confirm="Cancel this pending claim request?">
-                    <?= icon('x', 'i i-sm') ?> Cancel
-                  </button>
-                </form>
+              <?php if ($editId === (int)$c['id']): ?>
+                <a class="btn btn-ghost btn-sm" style="color:var(--teal)"
+                   href="<?= base_url('resident/claims.php') ?>">
+                  <?= icon('x', 'i i-sm') ?> Close
+                </a>
               <?php else: ?>
-                <span class="faint">—</span>
+                <a class="btn btn-ghost btn-sm" style="color:var(--teal)"
+                   href="<?= base_url('resident/claims.php?edit=' . (int)$c['id']) ?>">
+                  <?= icon('edit', 'i i-sm') ?> Edit
+                </a>
               <?php endif; ?>
+              <form method="post" style="display:inline">
+                <?= csrf_field() ?>
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="id" value="<?= (int)$c['id'] ?>">
+                <button class="btn btn-ghost btn-sm" style="color:var(--danger)"
+                        data-confirm="Delete this claim request?">
+                  <?= icon('trash', 'i i-sm') ?> Delete
+                </button>
+              </form>
             </td>
           </tr>
         <?php endforeach; ?>

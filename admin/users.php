@@ -74,6 +74,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $status  = in_array(post('status'), ['pending', 'active', 'inactive', 'rejected'], true) ? post('status') : 'active';
     $password = (string)($_POST['password'] ?? '');
 
+    /* Personal information is VIEW-ONLY on this screen. When updating an
+       existing account we always keep what is already stored — no matter what
+       was posted — so only role, status and password can actually change here.
+       Each account holder edits their own details from their profile page. */
+    if ($action === 'update') {
+        $st = $db->prepare('SELECT full_name, email, contact_number, address FROM users WHERE id = ?');
+        $st->execute([(int)post('id')]);
+        if ($row = $st->fetch()) {
+            $name    = $row['full_name'];
+            $email   = (string)$row['email'];
+            $contact = $row['contact_number'];
+            $address = $row['address'];
+        }
+    }
+
     if ($name === '' || $contact === '' || $address === '') $errors[] = 'Name, contact number, and address are required.';
     if (!filter_var($email, FILTER_VALIDATE_EMAIL))         $errors[] = 'A valid email address is required.';
 
@@ -177,7 +192,8 @@ require __DIR__ . '/../includes/header.php';
 <div class="page-head">
   <div>
     <h1>User Management</h1>
-    <p>Create, edit, activate/deactivate, or remove resident and admin accounts.
+    <p>Create accounts, view resident records, activate/deactivate, or remove resident and admin accounts.
+       Personal details are view-only — each account holder edits their own profile.
        Deactivation is recommended over deletion to preserve records.</p>
   </div>
   <a class="btn btn-teal" href="<?= base_url('admin/users.php?new=1') ?>"><?= icon('plus', 'i i-sm') ?> New User</a>
@@ -186,7 +202,7 @@ require __DIR__ . '/../includes/header.php';
 <?php if ($showForm): ?>
   <div class="card mb-3" style="max-width:900px">
     <div class="card-head">
-      <h3><?= $editUser ? 'Edit user — ' . e($editUser['full_name']) : 'Create new user' ?></h3>
+      <h3><?= $editUser ? 'View user — ' . e($editUser['full_name']) : 'Create new user' ?></h3>
       <a class="btn btn-ghost btn-sm" href="<?= base_url('admin/users.php') ?>">Close</a>
     </div>
     <div class="card-body">
@@ -195,22 +211,31 @@ require __DIR__ . '/../includes/header.php';
         <input type="hidden" name="action" value="<?= $editUser ? 'update' : 'create' ?>">
         <?php if ($editUser): ?><input type="hidden" name="id" value="<?= (int)$editUser['id'] ?>"><?php endif; ?>
 
+        <?php $lock = $editUser ? ' disabled' : ''; ?>
+        <?php if ($editUser): ?>
+          <div class="alert alert-info" style="margin-bottom:16px">
+            <span><strong>View only:</strong> personal information (name, email, contact number, address)
+                   cannot be edited here. The account holder updates their own details from their profile
+                   page — you can only change role, status, and password below.</span>
+          </div>
+        <?php endif; ?>
+
         <div class="form-grid">
           <div class="field">
             <label>Full name <span class="req">*</span></label>
-            <input class="input" name="full_name" value="<?= e($editUser['full_name'] ?? '') ?>" required>
+            <input class="input" name="full_name" value="<?= e($editUser['full_name'] ?? '') ?>" required<?= $lock ?>>
           </div>
           <div class="field">
             <label>Email <span class="req">*</span></label>
-            <input class="input" type="email" name="email" value="<?= e($editUser['email'] ?? '') ?>" required>
+            <input class="input" type="email" name="email" value="<?= e($editUser['email'] ?? '') ?>" required<?= $lock ?>>
           </div>
           <div class="field">
             <label>Contact number <span class="req">*</span></label>
-            <input class="input" name="contact_number" value="<?= e($editUser['contact_number'] ?? '') ?>" required>
+            <input class="input" name="contact_number" value="<?= e($editUser['contact_number'] ?? '') ?>" required<?= $lock ?>>
           </div>
           <div class="field">
             <label>Purok / Address <span class="req">*</span></label>
-            <select class="input" name="address" required>
+            <select class="input" name="address" required<?= $lock ?>>
               <?= purok_select($editUser['address'] ?? '') ?>
             </select>
           </div>
@@ -241,7 +266,7 @@ require __DIR__ . '/../includes/header.php';
           </div>
         </div>
         <div class="flex mt-3">
-          <button class="btn btn-teal" type="submit"><?= icon('check', 'i i-sm') ?> <?= $editUser ? 'Save changes' : 'Create user' ?></button>
+          <button class="btn btn-teal" type="submit"><?= icon('check', 'i i-sm') ?> <?= $editUser ? 'Save account settings' : 'Create user' ?></button>
           <a class="btn btn-ghost" href="<?= base_url('admin/users.php') ?>">Cancel</a>
         </div>
       </form>
@@ -249,6 +274,7 @@ require __DIR__ . '/../includes/header.php';
   </div>
 <?php endif; ?>
 
+<?php if (!$editUser): ?>
 <form class="filter-bar" method="get">
   <div class="field" style="flex:2">
     <label>Search</label>
@@ -280,7 +306,7 @@ require __DIR__ . '/../includes/header.php';
   <div class="table-wrap">
     <table>
       <thead>
-        <tr><th>User</th><th>Contact</th><th>Role</th><th>Status</th><th>Proof of residency</th><th>Joined</th><th class="td-actions">Actions</th></tr>
+        <tr><th>User</th><th>Role</th><th>Status</th><th>Joined</th><th class="td-actions">Actions</th></tr>
       </thead>
       <tbody>
       <?php foreach ($users as $usr): ?>
@@ -290,30 +316,17 @@ require __DIR__ . '/../includes/header.php';
               <div class="avatar"><?= e(initials($usr['full_name'])) ?></div>
               <div>
                 <strong><?= e($usr['full_name']) ?></strong> <?= (int)$usr['id'] === $uid ? '<span class="faint">(you)</span>' : '' ?>
-                <div class="faint"><?= e($usr['email']) ?></div>
               </div>
             </div>
-          </td>
-          <td class="muted small">
-            <?= e($usr['contact_number']) ?><br><?= e($usr['address']) ?>
           </td>
           <td><span class="badge badge-plain <?= $usr['role'] === 'admin' ? 'badge-match' : 'badge-info' ?>">
             <?= $usr['role'] === 'admin' ? 'Admin' : 'Resident' ?></span></td>
           <td><?= status_badge($usr['status']) ?></td>
-          <td class="muted small">
-            <?php if (!empty($usr['residency_proof'])): ?>
-              <a href="<?= e(proof_url($usr['residency_proof'])) ?>" target="_blank" rel="noopener">
-                <?= icon('image', 'i i-sm') ?> View proof
-              </a>
-            <?php else: ?>
-              &mdash;
-            <?php endif; ?>
-          </td>
           <td class="muted small"><?= fmt_date($usr['created_at']) ?></td>
           <td class="td-actions">
             <div class="actions">
               <a class="btn btn-outline btn-sm" href="<?= base_url('admin/users.php?edit=' . (int)$usr['id']) ?>">
-                <?= icon('edit', 'i i-sm') ?> Edit
+                <?= icon('eye', 'i i-sm') ?> View
               </a>
               <?php if ($usr['status'] === 'pending'): ?>
                 <details class="menu action-menu">
@@ -362,5 +375,6 @@ require __DIR__ . '/../includes/header.php';
     </table>
   </div>
 </div>
+<?php endif; ?>
 
 <?php require __DIR__ . '/../includes/footer.php'; ?>

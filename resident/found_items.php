@@ -8,20 +8,16 @@ require_login();
 $uid = (int)$_SESSION['user']['id'];
 $db  = get_db();
 
-/* Delete own report — allowed while not returned/closed */
+/* Delete own report — always allowed, matches/claims cascade with it */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && post('action') === 'delete') {
     verify_csrf();
     $id = (int)post('id');
     $st = $db->prepare('SELECT * FROM found_items WHERE id = ? AND user_id = ?');
     $st->execute([$id, $uid]);
     if ($item = $st->fetch()) {
-        if (in_array($item['status'], ['pending', 'approved', 'rejected'], true)) {
-            delete_uploaded_image($item['photo']);
-            $db->prepare('DELETE FROM found_items WHERE id = ?')->execute([$id]);
-            flash('success', 'Found report "' . $item['item_name'] . '" was deleted.');
-        } else {
-            flash('warn', 'This report can no longer be deleted because it is already being processed.');
-        }
+        delete_uploaded_image($item['photo']);
+        $db->prepare('DELETE FROM found_items WHERE id = ?')->execute([$id]);
+        flash('success', 'Found report "' . $item['item_name'] . '" was deleted.');
     }
     redirect('resident/found_items.php');
 }
@@ -37,8 +33,6 @@ $items = $db->prepare(
 $items->execute([$uid]);
 $items = $items->fetchAll();
 
-$editable = fn(string $s) => in_array($s, ['pending', 'approved', 'rejected'], true);
-
 $title  = 'My Found Reports';
 $active = 'found';
 require __DIR__ . '/../includes/header.php';
@@ -49,7 +43,6 @@ require __DIR__ . '/../includes/header.php';
     <h1>My Found Reports</h1>
     <p>Items you found and reported. Once the system matches your item to a lost report, its owner can file a claim request.</p>
   </div>
-  <a class="btn btn-teal" href="<?= base_url('resident/item_form.php?type=found') ?>"><?= icon('plus', 'i i-sm') ?> New Found Report</a>
 </div>
 
 <?php if (!$items): ?>
@@ -90,29 +83,29 @@ require __DIR__ . '/../includes/header.php';
             <td class="muted"><?= fmt_date($it['date_found']) ?></td>
             <td><?= status_badge($it['status']) ?></td>
             <td class="td-actions">
-              <?php if ($editable($it['status'])): ?>
-                <div class="actions">
-                  <a class="btn btn-outline btn-sm" href="<?= base_url('resident/item_form.php?type=found&id=' . (int)$it['id']) ?>">
-                    <?= icon('edit', 'i i-sm') ?> Edit
-                  </a>
-                  <form method="post">
-                    <?= csrf_field() ?>
-                    <input type="hidden" name="action" value="delete">
-                    <input type="hidden" name="id" value="<?= (int)$it['id'] ?>">
-                    <button class="btn btn-ghost btn-sm" style="color:var(--danger)" data-confirm="Delete this found report and its photo? This cannot be undone.">
-                      <?= icon('trash', 'i i-sm') ?> Delete
-                    </button>
-                  </form>
-                </div>
-              <?php else: ?>
-                <span class="faint">Locked — under review</span>
-              <?php endif; ?>
+              <div class="actions">
+                <a class="btn btn-outline btn-sm" href="<?= base_url('resident/item_form.php?type=found&id=' . (int)$it['id']) ?>">
+                  <?= icon('edit', 'i i-sm') ?> Edit
+                </a>
+                <form method="post">
+                  <?= csrf_field() ?>
+                  <input type="hidden" name="action" value="delete">
+                  <input type="hidden" name="id" value="<?= (int)$it['id'] ?>">
+                  <button class="btn btn-ghost btn-sm" style="color:var(--danger)" data-confirm="Delete this found report and its photo? This cannot be undone.">
+                    <?= icon('trash', 'i i-sm') ?> Delete
+                  </button>
+                </form>
+              </div>
             </td>
           </tr>
         <?php endforeach; ?>
         </tbody>
       </table>
     </div>
+  </div>
+
+  <div class="mt-3">
+    <a class="btn btn-teal" href="<?= base_url('resident/item_form.php?type=found') ?>"><?= icon('plus', 'i i-sm') ?> New Found Report</a>
   </div>
 <?php endif; ?>
 

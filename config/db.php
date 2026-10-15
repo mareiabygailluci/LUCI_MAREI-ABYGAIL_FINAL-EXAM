@@ -1,12 +1,27 @@
 <?php
 /**
  * LOST2FOUND — Database connection (PDO)
- * Adjust the constants below to match your XAMPP MySQL setup.
+ * Auto-detects environment: local XAMPP vs online hosting.
+ * Local lang pag localhost/127.0.0.1, lahat ng ibang domain = online.
  */
-define('DB_HOST', '127.0.0.1');
-define('DB_NAME', 'lost2found');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+$__host = $_SERVER['HTTP_HOST'] ?? 'cli';
+$__isLocal = ($__host === 'cli')
+    || str_contains($__host, 'localhost')
+    || str_contains($__host, '127.0.0.1');
+if (!$__isLocal) {
+    // --- ONLINE (InfinityFree) ---
+    define('DB_HOST', 'sql203.infinityfree.com');
+    define('DB_NAME', 'if0_43172445_lost2found');
+    define('DB_USER', 'if0_43172445');
+    define('DB_PASS', 'S0IddkTyZx');
+} else {
+    // --- LOCAL (XAMPP) ---
+    define('DB_HOST', '127.0.0.1');
+    define('DB_NAME', 'lost2found');
+    define('DB_USER', 'root');
+    define('DB_PASS', '');
+}
+unset($__host, $__isLocal);
 
 define('ROOT_PATH', dirname(__DIR__));
 define('UPLOAD_PATH', ROOT_PATH . '/uploads');

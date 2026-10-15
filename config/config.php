@@ -447,6 +447,17 @@ function notify(int $userId, string $message, string $type = 'system', ?string $
     $stmt->execute([$userId, $message, $type, $link]);
 }
 
+/** Broadcasts a notification to every active resident account (optionally skipping one, e.g. the reporter). */
+function notify_all_residents(string $message, string $type = 'system', ?string $link = null, int $exceptUserId = 0): void {
+    $stmt = get_db()->prepare(
+        "SELECT id FROM users WHERE role = 'resident' AND status = 'active' AND id <> ?"
+    );
+    $stmt->execute([$exceptUserId]);
+    foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $id) {
+        notify((int)$id, $message, $type, $link);
+    }
+}
+
 function unread_notifications(): int {
     if (!is_logged_in()) return 0;
     static $count = null;
@@ -469,15 +480,47 @@ function unread_notifications(): int {
  *  only approved items participate, so the flow stays:
  *  pending → approved → matched.
  * ============================================================ */
+/** Splits free text into meaningful keywords (drops filler words). */
+function text_keywords(string $text): array {
+    static $stop = [
+        'ang', 'ng', 'mga', 'na', 'at', 'ay', 'po', 'sa', 'si', 'sya', 'nya', 'ito', 'yan',
+        'yung', 'ko', 'mo', 'to', 'ni', 'pa', 'lang', 'lng', 'sana', 'nito', 'nito',
+        'the', 'a', 'an', 'and', 'or', 'is', 'are', 'of', 'in', 'on', 'at', 'for', 'with',
+        'my', 'your', 'his', 'her', 'their', 'this', 'that', 'was', 'were', 'be', 'been',
+    ];
+    $words = preg_split('/[^\pL\pN]+/u', mb_strtolower($text), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+    $out = [];
+    foreach ($words as $w) {
+        if (mb_strlen($w) < 2 || in_array($w, $stop, true)) continue;
+        $out[] = $w;
+    }
+    return array_values(array_unique($out));
+}
+
+/** 0..1 similarity between two labels: exact = 1, one contains the other = .7, else keyword overlap. */
+function text_similarity(string $a, string $b): float {
+    $a = mb_strtolower(trim($a));
+    $b = mb_strtolower(trim($b));
+    if ($a === '' || $b === '') return 0.0;
+    if ($a === $b) return 1.0;
+    if (str_contains($a, $b) || str_contains($b, $a)) return 0.7;
+
+    $ta = text_keywords($a);
+    $tb = text_keywords($b);
+    if (!$ta || !$tb) return 0.0;
+    $common = count(array_intersect($ta, $tb));
+    return (2.0 * $common) / (count($ta) + count($tb)); // Dice coefficient
+}
+
 function compute_match_score(array $lost, array $found): int {
     $score = 0.0;
 
-    // Category — 20%
-    $score += ($lost['category_id'] == $found['category_id']) ? 20 : 0;
+    // Item name — 30% (strongest signal: both reporters typed the same item)
+    $score += text_similarity((string)($lost['item_name'] ?? ''), (string)($found['item_name'] ?? '')) * 30;
 
-    // Color — 20% (exact, or partial keyword overlap)
-    $lostColor = strtolower(trim($lost['color']));
-    $foundColor = strtolower(trim($found['color']));
+    // Color — 20%
+    $lostColor  = strtolower(trim((string)($lost['color'] ?? '')));
+    $foundColor = strtolower(trim((string)($found['color'] ?? '')));
     if ($lostColor !== '' && $lostColor === $foundColor) {
         $score += 20;
     } elseif ($lostColor !== '' && $foundColor !== ''
@@ -485,27 +528,35 @@ function compute_match_score(array $lost, array $found): int {
         $score += 10; // partial (e.g. "dark blue" vs "blue")
     }
 
-    // Location — 25%
-    $score += ($lost['location_id'] == $found['location_id']) ? 25 : 0;
+    // Description — 15% (same details, even worded differently, still count)
+    $score += text_similarity((string)($lost['description'] ?? ''), (string)($found['description'] ?? '')) * 15;
 
-    // Date — 20% (found date must be >= lost date; tighter gaps score higher)
-    if (!empty($lost['date_lost']) && !empty($found['date_found'])) {
-        $dLost  = strtotime($lost['date_lost']);
-        $dFound = strtotime($found['date_found']);
-        if ($dFound !== false && $dLost !== false && $dFound >= $dLost) {
-            $gap = (int)floor(($dFound - $dLost) / 86400);
-            if ($gap === 0)       $score += 20;
-            elseif ($gap <= 2)    $score += 15;
-            elseif ($gap <= 5)    $score += 10;
-            elseif ($gap <= 14)   $score += 5;
-        }
+    // Location — 15%
+    if (!empty($lost['location_id']) && (int)$lost['location_id'] === (int)($found['location_id'] ?? 0)) {
+        $score += 15;
     }
 
-    // Brand — 15% (exact case-insensitive; both empty counts as exact)
-    $lostBrand  = strtolower(trim((string)($lost['brand'] ?? '')));
-    $foundBrand = strtolower(trim((string)($found['brand'] ?? '')));
-    if ($lostBrand === $foundBrand) {
-        $score += 15;
+    // Category — 10%
+    if (!empty($lost['category_id']) && (int)$lost['category_id'] === (int)($found['category_id'] ?? 0)) {
+        $score += 10;
+    }
+
+    // Brand — 5% (both empty counts as a match)
+    if (strtolower(trim((string)($lost['brand'] ?? ''))) === strtolower(trim((string)($found['brand'] ?? '')))) {
+        $score += 5;
+    }
+
+    // Date — 5% (closeness of the two dates, in either direction: a finder may
+    // hand an item in before its owner even notices the loss)
+    $dLost  = strtotime((string)($lost['date_lost'] ?? ''));
+    $dFound = strtotime((string)($found['date_found'] ?? ''));
+    if ($dLost !== false && $dFound !== false) {
+        $gap = (int)floor(abs($dFound - $dLost) / 86400);
+        if ($gap === 0)     $score += 5;
+        elseif ($gap <= 3)  $score += 4;
+        elseif ($gap <= 7)  $score += 3;
+        elseif ($gap <= 14) $score += 2;
+        elseif ($gap <= 30) $score += 1;
     }
 
     return (int)round(min($score, 100));

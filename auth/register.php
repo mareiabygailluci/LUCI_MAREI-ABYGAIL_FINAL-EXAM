@@ -30,7 +30,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $password     = (string)($_POST['password'] ?? '');
     $confirm      = (string)($_POST['confirm_password'] ?? '');
-    $emailConfirm = strtolower(trim((string)($_POST['email_confirm'] ?? '')));
     $email        = strtolower($old['email']);
 
     /* Contact number: digits only, max 11 (e.g. 09171234567). */
@@ -39,7 +38,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($old['first_name'] === '' || $old['last_name'] === '') $errors[] = 'First name and last name are required.';
     if (!filter_var($email, FILTER_VALIDATE_EMAIL))     $errors[] = 'A valid email address is required.';
-    if ($email !== $emailConfirm)                       $errors[] = 'Email addresses do not match.';
     if (!preg_match('/^09\d{9}$/', $old['contact_number'])) $errors[] = 'Contact number must be a valid 11-digit mobile number starting with 09 (e.g. 09171234567).';
     if ($old['address'] === '')                         $errors[] = 'Address / Purok is required.';
     if ($err = validate_password($password))            $errors[] = $err;
@@ -139,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div class="alert alert-danger" style="margin-bottom:14px"><span><?= e($err) ?></span></div>
         <?php endforeach; ?>
 
-        <form method="post" novalidate enctype="multipart/form-data">
+        <form method="post" novalidate enctype="multipart/form-data" class="reg-form">
           <?= csrf_field() ?>
           <div class="form-grid">
             <div class="field">
@@ -152,45 +150,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <input class="input" id="last_name" name="last_name" value="<?= e($old['last_name']) ?>"
                      placeholder="Dela Cruz" required>
             </div>
-            <div class="field">
+            <div class="field full">
               <label for="email">Email address <span class="req">*</span></label>
               <input class="input" type="email" id="email" name="email" value="<?= e($old['email']) ?>"
                      placeholder="you@example.com" required>
             </div>
             <div class="field">
-              <label for="email_confirm">Confirm email <span class="req">*</span></label>
-              <input class="input" type="email" id="email_confirm" name="email_confirm" value="<?= e($emailConfirm ?? '') ?>"
-                     placeholder="Type your email again" required>
-            </div>
-            <div class="field">
               <label for="contact_number">Contact number <span class="req">*</span></label>
               <input class="input" id="contact_number" name="contact_number" value="<?= e($old['contact_number']) ?>"
                      placeholder="09171234567" inputmode="numeric" maxlength="11" autocomplete="tel" required>
-              <div class="hint">11-digit mobile number starting with 09 — digits only.</div>
+              <div class="hint">11 digits, starts with 09.</div>
             </div>
-          </div>
-          <div class="field">
-            <label for="address">Purok / Address <span class="req">*</span></label>
-            <select class="input" id="address" name="address" required>
-              <option value="" disabled<?= $old['address'] === '' ? ' selected' : '' ?>>Select your Purok</option>
-              <?= purok_select($old['address']) ?>
-            </select>
-          </div>
-          <?php if (!$isFirst): ?>
-          <div class="field">
-            <label for="residency_proof">Proof of residency <span class="req">*</span></label>
-            <input class="input" type="file" id="residency_proof" name="residency_proof" accept="image/jpeg,image/png,image/webp">
-            <div class="hint">Photo of a valid ID or barangay certificate (JPG/PNG/WEBP, max 5 MB). Reviewed by the barangay admin before you can log in.</div>
-          </div>
-          <?php endif; ?>
-          <div class="form-grid">
+            <div class="field">
+              <label for="address">Purok / Address <span class="req">*</span></label>
+              <select class="input" id="address" name="address" required>
+                <option value="" disabled<?= $old['address'] === '' ? ' selected' : '' ?>>Select your Purok</option>
+                <?= purok_select($old['address']) ?>
+              </select>
+              <div class="hint">Barangay Libis puroks only.</div>
+            </div>
+            <?php if (!$isFirst): ?>
+            <div class="field full">
+              <label for="residency_proof">Proof of residency <span class="req">*</span></label>
+              <input class="input" type="file" id="residency_proof" name="residency_proof" accept="image/jpeg,image/png,image/webp">
+              <div class="hint">Photo of a valid ID or barangay certificate (JPG/PNG/WEBP, max 5 MB). Reviewed by the barangay admin before you can log in.</div>
+            </div>
+            <?php endif; ?>
             <div class="field">
               <label for="password">Password <span class="req">*</span></label>
               <div class="pwd-wrap">
                 <input class="input" type="password" id="password" name="password" required>
                 <button type="button" class="pwd-toggle" aria-label="Show password"><?= icon('eye', 'i i-sm') ?></button>
               </div>
-              <div class="hint">At least 8 characters, with letters and numbers.</div>
+              <div class="hint">8+ characters, letters &amp; numbers.</div>
             </div>
             <div class="field">
               <label for="confirm_password">Confirm password <span class="req">*</span></label>
@@ -198,6 +190,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input class="input" type="password" id="confirm_password" name="confirm_password" required>
                 <button type="button" class="pwd-toggle" aria-label="Show password"><?= icon('eye', 'i i-sm') ?></button>
               </div>
+              <div class="hint">Must match your password.</div>
             </div>
           </div>
           <button class="btn btn-primary btn-block" type="submit">Create account</button>
@@ -206,7 +199,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <p class="auth-alt">Already registered? <a href="<?= base_url('auth/login.php') ?>">Log in</a></p>
       </div>
       <?php endif; ?>
-      <p class="auth-alt"><a href="<?= base_url('index.php') ?>">&larr; Back to home</a></p>
     </div>
   </div>
 

@@ -9,6 +9,7 @@ $db     = get_db();
 $type   = ($_GET['type'] ?? 'lost') === 'found' ? 'found' : 'lost';
 $id     = (int)($_GET['id'] ?? 0);
 $table  = $type . '_items';
+$back   = in_array($_GET['back'] ?? '', ['claims', 'matches'], true) ? $_GET['back'] : $table;
 $dateCol = $type === 'lost' ? 'date_lost' : 'date_found';
 
 $st = $db->prepare(
@@ -25,7 +26,7 @@ $item = $st->fetch();
 
 if (!$item) {
     flash('danger', 'Item not found.');
-    redirect('admin/' . $table . '.php');
+    redirect('admin/' . $back . '.php');
 }
 
 /* Matches involving this item */
@@ -55,7 +56,7 @@ if ($type === 'found') {
 }
 
 $title  = ($type === 'lost' ? 'Lost report' : 'Found report') . ' — ' . $item['item_name'];
-$active = $type;
+$active = in_array($back, ['claims', 'matches'], true) ? $back : $type;
 require __DIR__ . '/../includes/header.php';
 ?>
 
@@ -65,7 +66,7 @@ require __DIR__ . '/../includes/header.php';
     <p><?= $type === 'lost' ? 'Lost item report' : 'Found item report' ?> ·
        filed <?= time_ago($item['created_at']) ?></p>
   </div>
-  <a class="btn btn-ghost" href="<?= base_url('admin/' . $table . '.php') ?>"><?= icon('back', 'i i-sm') ?> Back to list</a>
+  <a class="btn btn-ghost" href="<?= base_url('admin/' . $back . '.php') ?>"><?= icon('back', 'i i-sm') ?> Back to list</a>
 </div>
 
 <div class="grid-2-1">
@@ -113,7 +114,7 @@ require __DIR__ . '/../includes/header.php';
               <div class="when"><?= status_badge($m['status']) ?> · <?= time_ago($m['created_at']) ?></div>
             </div>
             <div style="margin-left:auto">
-              <a class="btn btn-ghost btn-sm" href="<?= base_url('admin/item_view.php?type=' . $m['other_type'] . '&id=' . (int)($m['other_type'] === 'found' ? $m['found_item_id'] : $m['lost_item_id'])) ?>">
+              <a class="btn btn-ghost btn-sm" href="<?= base_url('admin/item_view.php?type=' . $m['other_type'] . '&id=' . (int)($m['other_type'] === 'found' ? $m['found_item_id'] : $m['lost_item_id']) . '&back=' . e($back)) ?>">
                 <?= icon('eye', 'i i-sm') ?>
               </a>
             </div>

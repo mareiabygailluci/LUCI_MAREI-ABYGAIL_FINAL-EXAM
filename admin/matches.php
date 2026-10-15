@@ -100,7 +100,7 @@ require __DIR__ . '/../includes/header.php';
 
 <form class="filter-bar" method="get">
   <div class="field fit">
-    <label>Status</label>
+    <label>Match status</label>
     <select class="input" name="status">
       <option value="">All statuses</option>
       <?php foreach (['pending', 'confirmed', 'dismissed'] as $s): ?>
@@ -124,25 +124,35 @@ require __DIR__ . '/../includes/header.php';
     <div class="table-wrap">
       <table>
         <thead>
-          <tr><th>Lost item</th><th>Found item</th><th>Score</th><th>Status</th><th>Detected</th><th class="td-actions">Actions</th></tr>
+          <tr><th>Lost item</th><th>Found item</th><th>Score</th><th>Match status</th><th>Item status</th><th>Detected</th><th class="td-actions">Actions</th></tr>
         </thead>
         <tbody>
         <?php foreach ($matches as $m): ?>
           <tr>
             <td>
               <strong><?= e($m['lost_name']) ?></strong>
-              <div class="faint"><?= e($m['lost_owner']) ?> · <?= status_badge($m['lost_status']) ?></div>
+              <div class="faint"><?= e($m['lost_owner']) ?></div>
             </td>
             <td>
               <strong><?= e($m['found_name']) ?></strong>
-              <div class="faint"><?= e($m['found_owner']) ?> · <?= status_badge($m['found_status']) ?></div>
+              <div class="faint"><?= e($m['found_owner']) ?></div>
             </td>
             <td><div class="score-ring<?= $scoreClass((int)$m['match_score']) ?>" style="width:48px;height:48px;font-size:.8rem"><?= (int)$m['match_score'] ?>%</div></td>
             <td><?= status_badge($m['status']) ?></td>
+            <td class="small">
+              <div class="flex" style="gap:7px">
+                <span class="faint" style="min-width:40px">Lost</span>
+                <?= status_badge($m['lost_status']) ?>
+              </div>
+              <div class="flex" style="gap:7px;margin-top:4px">
+                <span class="faint" style="min-width:40px">Found</span>
+                <?= status_badge($m['found_status']) ?>
+              </div>
+            </td>
             <td class="muted small"><?= time_ago($m['created_at']) ?></td>
             <td class="td-actions">
               <div class="actions">
-                <a class="btn btn-outline btn-sm" href="<?= base_url('admin/item_view.php?type=lost&id=' . (int)$m['lost_item_id']) ?>">
+                <a class="btn btn-outline btn-sm" href="<?= base_url('admin/item_view.php?type=lost&id=' . (int)$m['lost_item_id'] . '&back=matches') ?>">
                   <?= icon('eye', 'i i-sm') ?> View
                 </a>
                 <?php if ($m['status'] === 'pending'): ?>

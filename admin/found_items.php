@@ -156,7 +156,8 @@ require __DIR__ . '/../includes/header.php';
                 <?php if (in_array($it['status'], ['approved', 'matched'], true)): ?>
                   <a class="btn btn-ghost btn-sm" style="color:var(--success)"
                      href="<?= base_url('admin/found_items.php?action=returned&id=' . (int)$it['id'] . '&csrf=' . csrf_token()) ?>"
-                     data-confirm="Mark this found item as returned to its owner?">
+                     data-confirm="Mark this found item as returned to its owner?"
+                     data-confirm-tone="success">
                     <?= icon('gift', 'i i-sm') ?> Returned
                   </a>
                   <a class="btn btn-ghost btn-sm" style="color:var(--danger)"

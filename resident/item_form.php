@@ -32,10 +32,6 @@ if ($editing) {
         flash('danger', 'Report not found or you do not have permission to edit it.');
         redirect($listUrl);
     }
-    if (!in_array($item['status'], ['pending', 'approved', 'rejected'], true)) {
-        flash('warn', 'This report is already being processed and can no longer be edited.');
-        redirect($listUrl);
-    }
 }
 
 $errors = [];
@@ -102,6 +98,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'New ' . $type . ' item report "' . $itemName . '" was submitted and added to the matching engine automatically.',
                 'status', 'admin/' . $type . '_items.php'
             );
+            notify_all_residents(
+                $type === 'lost'
+                    ? 'A resident just filed a new lost item report: "' . $itemName . '". Open Browse Items in case you have it and can help return it.'
+                    : 'A resident just reported a found item: "' . $itemName . '". Open Browse Items in case it is yours.',
+                'status', 'resident/browse.php', $uid
+            );
             flash('success', 'Report submitted! The matching engine has automatically checked it against the opposite reports. You will be notified of any possible matches with their accuracy rating.');
         }
         redirect($listUrl);
@@ -121,7 +123,7 @@ require __DIR__ . '/../includes/header.php';
   <div>
     <h1><?= e($title) ?></h1>
     <p><?= $editing
-            ? 'Update the details of your report. Only while it is still being processed.'
+            ? 'Update the details of your report. The matching engine re-checks it after saving.'
             : 'Fill out the details below. Fields marked with * are required.' ?></p>
   </div>
   <a class="btn btn-ghost" href="<?= base_url($listUrl) ?>"><?= icon('back', 'i i-sm') ?> Back to my reports</a>
@@ -144,7 +146,7 @@ require __DIR__ . '/../includes/header.php';
         <div class="field">
           <label for="item_name">Item name <span class="req">*</span></label>
           <input class="input" id="item_name" name="item_name" maxlength="100"
-                 value="<?= $val('item_name', $item['item_name'] ?? '') ?>" placeholder="e.g. Black Wallet">
+                 value="<?= $val('item_name', $item['item_name'] ?? '') ?>" placeholder="e.g. Wallet">
         </div>
         <div class="field">
           <label for="category_id">Category <span class="req">*</span></label>

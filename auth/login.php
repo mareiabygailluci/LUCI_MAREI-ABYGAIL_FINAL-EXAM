@@ -65,8 +65,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <link rel="stylesheet" href="<?= base_url('assets/css/style.css') ?>">
 </head>
 <body>
-<div class="auth">
 
+<div class="auth">
   <div class="auth-side">
     <div>
       <div class="flex">
@@ -129,6 +129,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </div>
 
 </div>
+
+<footer class="public-footer">
+  <b>LOST2FOUND</b> · Barangay Libis Lost &amp; Found Management System<br>
+  &copy; <?= date('Y') ?> Barangay Libis. All rights reserved.
+</footer>
 <script>
 (function () {
   var EYE     = <?= json_encode(icon('eye', 'i i-sm')) ?>;

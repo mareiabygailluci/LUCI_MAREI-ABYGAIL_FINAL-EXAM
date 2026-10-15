@@ -187,6 +187,6 @@
 </script>
 <?php endif; ?>
 
-<script src="<?= base_url('assets/js/app.js') ?>"></script>
+<script src="<?= base_url('assets/js/app.js') ?>?v=<?= (int)filemtime(__DIR__ . '/../assets/js/app.js') ?>"></script>
 </body>
 </html>

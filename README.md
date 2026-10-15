@@ -8,7 +8,37 @@ claim verification workflow.
 
 ---
 
-## Quick Start (XAMPP)
+## Run it on localhost after cloning (FINAL EXAM setup)
+
+> Clone this repo anywhere inside `htdocs` — the folder name does not matter.
+> Example below uses `Lost2Found`, but `LUCI_MAREI-ABYGAIL_FINAL-EXAM` works the same.
+
+1. Clone the repo into XAMPP's web folder:
+   ```bash
+   git clone https://github.com/mareiabygailluci/Lost2Found.git "C:\xampp\htdocs\Lost2Found"
+   ```
+   (If your XAMPP is at `D:\xamp`, clone to `D:\xamp\htdocs\Lost2Found` instead.)
+2. Start **Apache** and **MySQL** in the XAMPP Control Panel.
+3. Open **http://localhost/phpmyadmin** → **Import** → choose
+   `database/lost2found.sql` → **Go**.
+   The file creates the `lost2found` database, all tables, categories,
+   locations, **and the demo accounts below** (safe to re-import anytime).
+4. Log in (no registration needed):
+   - Landing page: **http://localhost/Lost2Found/**
+   - Login page: **http://localhost/Lost2Found/auth/login.php**
+
+## Test accounts (gagana agad pagkatapos mag-import ng SQL)
+
+| Role     | Email                              | Password      | Notes                          |
+|----------|------------------------------------|---------------|--------------------------------|
+| Admin    | `admin@lost2found.ph`              | `Admin1234`   | Barangay admin, full access    |
+| Resident | `mareiabygailluci.dost@gmail.com`  | `Jeremiah29:11` | Active resident, ready to use |
+
+> Change these passwords after logging in (My Profile → Change password).
+
+The MySQL credentials live in `config/db.php` (XAMPP defaults: `root`, empty password).
+
+## Quick Start (fresh database / new admin)
 
 1. Copy the project folder into `C:\xampp\htdocs\lost2found`.
 2. Start **Apache** and **MySQL** in the XAMPP Control Panel.

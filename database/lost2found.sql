@@ -130,15 +130,15 @@ CREATE TABLE IF NOT EXISTS notifications (
 
 -- ============================================================
 --  SEED DATA
---  NOTE: User accounts are NOT seeded here because passwords must
---  be hashed with password_hash() (bcrypt), which plain SQL cannot
---  produce. Just register through the website instead — the FIRST
---  account created automatically becomes the Barangay Admin.
+--  Demo login accounts (ready to use after import — no need to register).
+--  Passwords are bcrypt hashes made with PHP password_hash().
 --
---  RESIDENT ACCOUNTS start as status='pending'. They can only log in
---  after the admin reviews their uploaded proof of residency
---  (users.residency_proof) and approves them from Admin > Users.
---  The FIRST account (the admin) is created already active.
+--    Admin:    admin@lost2found.ph / Admin1234
+--    Resident: mareiabygailluci.dost@gmail.com / Jeremiah29:11
+--
+--  Re-importing this file will NOT delete existing reports; it only
+--  inserts/updates these two demo accounts and the default
+--  categories/locations.
 -- ============================================================
 
 INSERT INTO categories (category_name) VALUES
@@ -150,3 +150,12 @@ INSERT INTO locations (location_name) VALUES
   ('Barangay Hall'),('Barangay Covered Court'),('Health Center'),
   ('Purok 1'),('Purok 2'),('Purok 3'),('Chapel'),('Other')
 ON DUPLICATE KEY UPDATE location_name = location_name;
+
+-- ---------- DEMO ACCOUNTS (upsert by email, safe to re-import) ----------
+INSERT INTO users (full_name, email, password, contact_number, address, role, status, anonymous_name) VALUES
+  ('Barangay Admin', 'admin@lost2found.ph', '$2y$10$ugZmJ4714BYzL/9wBwbd6OGNJhm3kfWggGobD.Fdmd00nr9i99j1m', '09171234567', 'Purok 1', 'admin', 'active', 'Anonymous Admin 0001'),
+  ('Marei Abygail Luci', 'mareiabygailluci.dost@gmail.com', '$2y$10$eq7SRUGyJU8Ti0UjjifSG.HmJ3/67fkyC4M6oFCLs2k2qObJCMdgq', '09171234568', 'Purok 2', 'resident', 'active', 'Anonymous Brave Owl 4812')
+ON DUPLICATE KEY UPDATE
+  password = VALUES(password),
+  role     = VALUES(role),
+  status   = VALUES(status);

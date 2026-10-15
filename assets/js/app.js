@@ -55,6 +55,12 @@
 
       if (confirmMsg) confirmMsg.textContent = el.getAttribute('data-confirm') || 'Are you sure?';
 
+      /* Positive actions (data-confirm-tone="success") get a calm green confirm;
+         destructive ones (reject/delete) stay red. */
+      var tone = el.getAttribute('data-confirm-tone') === 'success';
+      if (confirmBtn) confirmBtn.className = tone ? 'btn btn-success' : 'btn btn-danger';
+      confirmModal.classList.toggle('tone-success', tone);
+
       var form = el.closest('form');
       if (form && confirmBtn) {
         confirmBtn.removeAttribute('href');
@@ -96,5 +102,18 @@
       alert.style.opacity = '0';
       setTimeout(function () { alert.remove(); }, 400);
     }, 6000);
+  });
+
+  /* ---------- Clickable cards ([data-href]) ---------- */
+  document.addEventListener('click', function (e) {
+    var card = e.target.closest('[data-href]');
+    if (!card) return;
+    if (e.target.closest('a, button, input, select, textarea, label, form')) return;
+    window.location.href = card.getAttribute('data-href');
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    var card = e.target.closest ? e.target.closest('[data-href]') : null;
+    if (card && card === e.target) window.location.href = card.getAttribute('data-href');
   });
 })();

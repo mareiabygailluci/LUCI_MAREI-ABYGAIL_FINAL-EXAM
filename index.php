@@ -26,7 +26,7 @@ $reportLabel = $loggedIn ? 'Report Lost Item' : 'Get Started — It\'s Free';
 <title>Lost2Found · Barangay Libis Lost &amp; Found</title>
 <link rel="stylesheet" href="<?= base_url('assets/css/style.css') ?>">
 </head>
-<body>
+<body class="landing">
 
 <nav class="navbar">
   <div class="flex">
