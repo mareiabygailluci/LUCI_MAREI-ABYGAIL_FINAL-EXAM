@@ -6,6 +6,12 @@ claim verification workflow.
 
 **Stack:** PHP 8 (PDO) · MySQL · HTML/CSS/JS (no frameworks, no build step)
 
+## Live demo (hosted)
+
+**https://lost2found.site.je/index.php**
+
+Use the test accounts below to log in (same as localhost).
+
 ---
 
 ## Run it on localhost after cloning (FINAL EXAM setup)
