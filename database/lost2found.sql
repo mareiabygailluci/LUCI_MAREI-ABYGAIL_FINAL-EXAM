@@ -133,7 +133,7 @@ CREATE TABLE IF NOT EXISTS notifications (
 --  Demo login accounts (ready to use after import — no need to register).
 --  Passwords are bcrypt hashes made with PHP password_hash().
 --
---    Admin:    admin@lost2found.ph / Admin1234
+--    Admin:    admin@lost2found.ph / admin123
 --    Resident: mareiabygailluci.dost@gmail.com / Jeremiah29:11
 --
 --  Re-importing this file will NOT delete existing reports; it only
@@ -153,7 +153,7 @@ ON DUPLICATE KEY UPDATE location_name = location_name;
 
 -- ---------- DEMO ACCOUNTS (upsert by email, safe to re-import) ----------
 INSERT INTO users (full_name, email, password, contact_number, address, role, status, anonymous_name) VALUES
-  ('Barangay Admin', 'admin@lost2found.ph', '$2y$10$ugZmJ4714BYzL/9wBwbd6OGNJhm3kfWggGobD.Fdmd00nr9i99j1m', '09171234567', 'Purok 1', 'admin', 'active', 'Anonymous Admin 0001'),
+  ('Barangay Admin', 'admin@lost2found.ph', '$2y$10$ouGmvTRQ2GWPJm6RFnTag.V8aQ1LXUPC.SEz6NHKulEkf56jNuiS.', '09171234567', 'Purok 1', 'admin', 'active', 'Anonymous Admin 0001'),
   ('Marei Abygail Luci', 'mareiabygailluci.dost@gmail.com', '$2y$10$eq7SRUGyJU8Ti0UjjifSG.HmJ3/67fkyC4M6oFCLs2k2qObJCMdgq', '09171234568', 'Purok 2', 'resident', 'active', 'Anonymous Brave Owl 4812')
 ON DUPLICATE KEY UPDATE
   password = VALUES(password),

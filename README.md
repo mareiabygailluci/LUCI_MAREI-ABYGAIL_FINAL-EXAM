@@ -37,7 +37,7 @@ Use the test accounts below to log in (same as localhost).
 
 | Role     | Email                              | Password      | Notes                          |
 |----------|------------------------------------|---------------|--------------------------------|
-| Admin    | `admin@lost2found.ph`              | `Admin1234`   | Barangay admin, full access    |
+| Admin    | `admin@lost2found.ph`              | `admin123`      | Barangay admin, full access    |
 | Resident | `mareiabygailluci.dost@gmail.com`  | `Jeremiah29:11` | Active resident, ready to use |
 
 > Change these passwords after logging in (My Profile → Change password).
